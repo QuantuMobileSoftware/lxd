@@ -64,6 +64,7 @@ type initCmd struct {
 	confArgs configList
 	ephem    bool
 	network  string
+	kvm      bool
 }
 
 func (c *initCmd) showByDefault() bool {

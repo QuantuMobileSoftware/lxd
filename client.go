@@ -429,6 +429,11 @@ func (c *Client) put(base string, args interface{}, rtype ResponseType) (*Respon
 	return HoistResponse(resp, rtype)
 }
 
+func (c *Client) LaunchKVMContainer(imageFilePath string) error {
+	_, err := c.post("containers", shared.Jmap{"kvmImagePath": imageFilePath, "kvm": true}, Async)
+	return err
+}
+
 func (c *Client) post(base string, args interface{}, rtype ResponseType) (*Response, error) {
 	uri := c.url(shared.APIVersion, base)
 
@@ -444,6 +449,7 @@ func (c *Client) post(base string, args interface{}, rtype ResponseType) (*Respo
 	if err != nil {
 		return nil, err
 	}
+
 	req.Header.Set("User-Agent", shared.UserAgent)
 	req.Header.Set("Content-Type", "application/json")
 

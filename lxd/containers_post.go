@@ -4,8 +4,12 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"encoding/pem"
+	"errors"
 	"fmt"
+	"io"
 	"net/http"
+	"os"
+	"os/exec"
 	"strings"
 
 	"github.com/dustinkirkland/golang-petname"
@@ -48,6 +52,8 @@ type containerImageSource struct {
 }
 
 type containerPostReq struct {
+	KVM          bool                 `json:"kvm"`
+	KVMImagePath string               `json:"kvmImagePath"`
 	Architecture string               `json:"architecture"`
 	Config       map[string]string    `json:"config"`
 	Devices      shared.Devices       `json:"devices"`
@@ -399,15 +405,65 @@ func createFromCopy(d *Daemon, req *containerPostReq) Response {
 	return OperationResponse(op)
 }
 
+// Dummy response object for containerPostKVM.
+type resp struct{}
+
+func (r resp) Render(w http.ResponseWriter) error {
+	w.Write([]byte(""))
+	return nil
+}
+
+func (r resp) String() string { return "" }
+
 func containersPost(d *Daemon, r *http.Request) Response {
 	shared.LogDebugf("Responding to container create")
 
-	req := containerPostReq{}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	req := &containerPostReq{}
+	dec := json.NewDecoder(r.Body)
+
+	if err := dec.Decode(&req); err == io.EOF {
+		return BadRequest(err)
+	}
+	if !req.KVM {
+		return containersPostLXC(d, req)
+	}
+	return containerPostKVM(d, req)
+}
+
+// KVM version of containerPost.
+func containerPostKVM(d *Daemon, r *containerPostReq) Response {
+	if r.KVMImagePath == "" {
+		return BadRequest(errors.New("No path for KVM image is provided."))
+	}
+
+	unameRelease, err := getUnameRelease()
+	if err != nil {
 		return BadRequest(err)
 	}
 
-	if req.Name == "" {
+	cmd := exec.Command(
+		"qemu-system-x86_64",
+		"-kernel", fmt.Sprintf("/boot/vmlinuz-%v", unameRelease),
+		"-initrd", fmt.Sprintf("/boot/initrd.img-%v", unameRelease),
+		"-fsdev", fmt.Sprintf("local,id=r,path=%v,security_model=none", r.KVMImagePath),
+		"-device", "virtio-9p-pci,fsdev=r,mount_tag=r",
+		"-nographic",
+		"-append", "'root=r rw rootfstype=9p rootflags=trans=virtio console=ttyS0 init=/bin/sh'",
+		"-m", "1024",
+	)
+	cmd.Stderr = os.Stdout
+	cmd.Stdout = os.Stdout
+	err = cmd.Run()
+	if err != nil {
+		return BadRequest(err)
+	}
+
+	return resp{}
+}
+
+// LXC verion of containersPost.
+func containersPostLXC(d *Daemon, r *containerPostReq) Response {
+	if r.Name == "" {
 		cs, err := dbContainersList(d.db, cTypeRegular)
 		if err != nil {
 			return InternalError(err)
@@ -416,8 +472,8 @@ func containersPost(d *Daemon, r *http.Request) Response {
 		i := 0
 		for {
 			i++
-			req.Name = strings.ToLower(petname.Generate(2, "-"))
-			if !shared.StringInSlice(req.Name, cs) {
+			r.Name = strings.ToLower(petname.Generate(2, "-"))
+			if !shared.StringInSlice(r.Name, cs) {
 				break
 			}
 
@@ -425,31 +481,31 @@ func containersPost(d *Daemon, r *http.Request) Response {
 				return InternalError(fmt.Errorf("couldn't generate a new unique name after 100 tries"))
 			}
 		}
-		shared.LogDebugf("No name provided, creating %s", req.Name)
+		shared.LogDebugf("No name provided, creating %s", r.Name)
 	}
 
-	if req.Devices == nil {
-		req.Devices = shared.Devices{}
+	if r.Devices == nil {
+		r.Devices = shared.Devices{}
 	}
 
-	if req.Config == nil {
-		req.Config = map[string]string{}
+	if r.Config == nil {
+		r.Config = map[string]string{}
 	}
 
-	if strings.Contains(req.Name, shared.SnapshotDelimiter) {
+	if strings.Contains(r.Name, shared.SnapshotDelimiter) {
 		return BadRequest(fmt.Errorf("Invalid container name: '%s' is reserved for snapshots", shared.SnapshotDelimiter))
 	}
 
-	switch req.Source.Type {
+	switch r.Source.Type {
 	case "image":
-		return createFromImage(d, &req)
+		return createFromImage(d, r)
 	case "none":
-		return createFromNone(d, &req)
+		return createFromNone(d, r)
 	case "migration":
-		return createFromMigration(d, &req)
+		return createFromMigration(d, r)
 	case "copy":
-		return createFromCopy(d, &req)
+		return createFromCopy(d, r)
 	default:
-		return BadRequest(fmt.Errorf("unknown source type %s", req.Source.Type))
+		return BadRequest(fmt.Errorf("unknown source type %s", r.Source.Type))
 	}
 }

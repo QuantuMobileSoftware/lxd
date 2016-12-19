@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os/exec"
+	"strings"
 
 	"github.com/lxc/lxd/shared"
 )
@@ -64,4 +66,10 @@ func loadModule(module string) error {
 	}
 
 	return shared.RunCommand("modprobe", module)
+}
+
+func getUnameRelease() (string, error) {
+	cmd := exec.Command("uname", "-r")
+	out, err := cmd.Output()
+	return strings.TrimSpace(string(out)), err
 }

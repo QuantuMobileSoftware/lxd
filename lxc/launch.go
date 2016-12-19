@@ -45,9 +45,19 @@ func (c *launchCmd) flags() {
 	gnuflag.BoolVar(&c.init.ephem, "e", false, i18n.G("Ephemeral container"))
 	gnuflag.StringVar(&c.init.network, "network", "", i18n.G("Network name"))
 	gnuflag.StringVar(&c.init.network, "n", "", i18n.G("Network name"))
+
+	gnuflag.BoolVar(&c.init.kvm, "kvm", false, i18n.G("KVM support"))
 }
 
 func (c *launchCmd) run(config *lxd.Config, args []string) error {
+	if c.init.kvm {
+		remote, _ := config.ParseRemoteAndContainer("")
+		d, err := lxd.NewClient(config, remote)
+		if err != nil {
+			return err
+		}
+		return d.LaunchKVMContainer(args[0])
+	}
 	if len(args) > 2 || len(args) < 1 {
 		return errArgs
 	}
