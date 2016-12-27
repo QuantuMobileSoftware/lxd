@@ -7,7 +7,7 @@ Build the whole thing with `make`.
 Binaries are stored in `$GOPATH/bin`, both lxc and lxd.
 
 ### Running
-Make sure that your global lxd installation is not running, then lxd binary.
+Make sure that your global lxd installation is not running, then run lxd binary.
 Then run lxc:
 ```
 sudo $GOPATH/bin/lxc launch <full path to image> --kvm
