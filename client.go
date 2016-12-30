@@ -429,8 +429,8 @@ func (c *Client) put(base string, args interface{}, rtype ResponseType) (*Respon
 	return HoistResponse(resp, rtype)
 }
 
-func (c *Client) LaunchKVMContainer(imageFilePath string) error {
-	_, err := c.post("containers", shared.Jmap{"kvmImagePath": imageFilePath, "kvm": true}, Async)
+func (c *Client) LaunchOCIContainer(bundlePath, name string) error {
+	_, err := c.post("containers", shared.Jmap{"bundlePath": bundlePath, "name": name, "kvm": true}, Async)
 	return err
 }
 

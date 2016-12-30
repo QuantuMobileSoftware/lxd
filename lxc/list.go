@@ -13,6 +13,7 @@ import (
 	"github.com/olekukonko/tablewriter"
 
 	"github.com/lxc/lxd"
+	"github.com/lxc/lxd/oci"
 	"github.com/lxc/lxd/shared"
 	"github.com/lxc/lxd/shared/gnuflag"
 	"github.com/lxc/lxd/shared/i18n"
@@ -58,6 +59,7 @@ type listCmd struct {
 	columnsRaw string
 	fast       bool
 	format     string
+	kvm        bool
 }
 
 func (c *listCmd) showByDefault() bool {
@@ -122,6 +124,7 @@ func (c *listCmd) flags() {
 	gnuflag.StringVar(&c.columnsRaw, "columns", "ns46tS", i18n.G("Columns"))
 	gnuflag.StringVar(&c.format, "format", "table", i18n.G("Format"))
 	gnuflag.BoolVar(&c.fast, "fast", false, i18n.G("Fast mode (same as --columns=nsacPt"))
+	gnuflag.BoolVar(&c.kvm, "kvm", false, i18n.G("KVM support"))
 }
 
 // This seems a little excessive.
@@ -396,8 +399,13 @@ func (c *listCmd) run(config *lxd.Config, args []string) error {
 		return err
 	}
 
-	var cts []shared.ContainerInfo
-	ctslist, err := d.ListContainers()
+	var cts, ctslist []shared.ContainerInfo
+	if c.kvm {
+		ctslist, err = oci.List()
+	} else {
+		ctslist, err = d.ListContainers()
+	}
+
 	if err != nil {
 		return err
 	}

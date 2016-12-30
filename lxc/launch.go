@@ -56,7 +56,7 @@ func (c *launchCmd) run(config *lxd.Config, args []string) error {
 		if err != nil {
 			return err
 		}
-		return d.LaunchKVMContainer(args[0])
+		return d.LaunchOCIContainer(args[0], args[1])
 	}
 	if len(args) > 2 || len(args) < 1 {
 		return errArgs

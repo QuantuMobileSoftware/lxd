@@ -15,6 +15,8 @@ import (
 type deleteCmd struct {
 	force       bool
 	interactive bool
+
+	kvm bool
 }
 
 func (c *deleteCmd) showByDefault() bool {
@@ -35,6 +37,8 @@ func (c *deleteCmd) flags() {
 	gnuflag.BoolVar(&c.force, "force", false, i18n.G("Force the removal of stopped containers."))
 	gnuflag.BoolVar(&c.interactive, "i", false, i18n.G("Require user confirmation."))
 	gnuflag.BoolVar(&c.interactive, "interactive", false, i18n.G("Require user confirmation."))
+
+	gnuflag.BoolVar(&c.kvm, "kvm", false, i18n.G("KVM support"))
 }
 
 func (c *deleteCmd) promptDelete(name string) error {
@@ -84,6 +88,7 @@ func (c *deleteCmd) run(config *lxd.Config, args []string) error {
 
 		ct, err := d.ContainerInfo(name)
 		if err != nil {
+			fmt.Println("here")
 			return err
 		}
 

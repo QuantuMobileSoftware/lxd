@@ -4,16 +4,15 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"encoding/pem"
-	"errors"
+	"github.com/pkg/errors"
 	"fmt"
 	"io"
 	"net/http"
-	"os"
-	"os/exec"
 	"strings"
 
 	"github.com/dustinkirkland/golang-petname"
 	"github.com/gorilla/websocket"
+	"github.com/lxc/lxd/oci"
 	"github.com/lxc/lxd/shared"
 
 	log "gopkg.in/inconshreveable/log15.v2"
@@ -53,7 +52,7 @@ type containerImageSource struct {
 
 type containerPostReq struct {
 	KVM          bool                 `json:"kvm"`
-	KVMImagePath string               `json:"kvmImagePath"`
+	BundlePath string               `json:"bundlePath"`
 	Architecture string               `json:"architecture"`
 	Config       map[string]string    `json:"config"`
 	Devices      shared.Devices       `json:"devices"`
@@ -421,43 +420,27 @@ func containersPost(d *Daemon, r *http.Request) Response {
 	req := &containerPostReq{}
 	dec := json.NewDecoder(r.Body)
 
+	fmt.Printf("%+v", req)
+
 	if err := dec.Decode(&req); err == io.EOF {
 		return BadRequest(err)
 	}
 	if !req.KVM {
 		return containersPostLXC(d, req)
 	}
-	return containerPostKVM(d, req)
+	return containerPostOCI(d, req)
 }
 
-// KVM version of containerPost.
-func containerPostKVM(d *Daemon, r *containerPostReq) Response {
-	if r.KVMImagePath == "" {
+// cc-oci-runtime version of containerPost.
+func containerPostOCI(d *Daemon, r *containerPostReq) Response {
+	if r.BundlePath == "" {
 		return BadRequest(errors.New("No path for KVM image is provided."))
 	}
 
-	unameRelease, err := getUnameRelease()
+	err := oci.Create(r.Name, r.BundlePath)
 	if err != nil {
-		return BadRequest(err)
+		return BadRequest(errors.Wrap(err, "Error while attempting to create cc-oci-runtime container"))
 	}
-
-	cmd := exec.Command(
-		"qemu-system-x86_64",
-		"-kernel", fmt.Sprintf("/boot/vmlinuz-%v", unameRelease),
-		"-initrd", fmt.Sprintf("/boot/initrd.img-%v", unameRelease),
-		"-fsdev", fmt.Sprintf("local,id=r,path=%v,security_model=none", r.KVMImagePath),
-		"-device", "virtio-9p-pci,fsdev=r,mount_tag=r",
-		"-nographic",
-		"-append", "'root=r rw rootfstype=9p rootflags=trans=virtio console=ttyS0 init=/bin/sh'",
-		"-m", "1024",
-	)
-	cmd.Stderr = os.Stdout
-	cmd.Stdout = os.Stdout
-	err = cmd.Run()
-	if err != nil {
-		return BadRequest(err)
-	}
-
 	return resp{}
 }
 
