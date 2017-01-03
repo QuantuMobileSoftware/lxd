@@ -9,6 +9,7 @@ import (
 )
 
 func containersGet(d *Daemon, r *http.Request) Response {
+	fmt.Println("************OCI: ", d.oci)
 	for i := 0; i < 100; i++ {
 		result, err := doContainersGet(d, d.isRecursionRequest(r))
 		if err == nil {

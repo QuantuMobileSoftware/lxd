@@ -46,6 +46,7 @@ var argTimeout = gnuflag.Int("timeout", -1, "")
 var argTrustPassword = gnuflag.String("trust-password", "", "")
 var argVerbose = gnuflag.Bool("verbose", false, "")
 var argVersion = gnuflag.Bool("version", false, "")
+var argOCI = gnuflag.Bool("oci", false, "")
 
 // Global variables
 var debug bool
@@ -359,6 +360,7 @@ func cmdDaemon() error {
 	}
 
 	d := &Daemon{
+		oci: *argOCI,
 		group:     *argGroup,
 		SetupMode: shared.PathExists(shared.VarPath(".setup_mode"))}
 	err := d.Init()

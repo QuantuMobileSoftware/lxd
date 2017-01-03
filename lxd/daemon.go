@@ -63,6 +63,8 @@ type Socket struct {
 
 // A Daemon can respond to requests from a shared client.
 type Daemon struct {
+	oci bool
+
 	architectures       []int
 	BackingFs           string
 	clientCerts         []x509.Certificate
