@@ -161,42 +161,6 @@ type NetworkConfig struct {
 	UsedBy  []string          `json:"used_by"`
 }
 
-const (
-	indexArchitecture = iota
-	indexConfig
-	indexCreationDate
-	indexDevices
-	indexEphemeral
-	indexExpandedConfig
-	indexExpandedDevices
-	indexLastUsedDate
-	indexName
-	indexProfiles
-	indexStateful
-	indexStatus
-	indexStatusCode
-)
-
-func ParseContainerInfo(str string) (ContainerInfo, error) {
-	tokens := strings.Split(str, " ")
-	return ContainerInfo{
-		Architecture: tokens[indexArchitecture],
-		Name:         tokens[indexName],
-		// TODO: parse fields below.
-		// Config:          tokens[indexConfig],
-		// CreationDate:    tokens[indexCreationDate],
-		// Devices:         tokens[indexDevices],
-		// Ephemeral:       tokens[indexEphemeral],
-		// ExpandedConfig:  tokens[indexExpandedConfig],
-		// ExpandedDevices: tokens[indexExpandedDevices],
-		// LastUsedDate:    tokens[indexLastUsedDate],
-		// Profiles:        tokens[indexProfiles],
-		// Stateful:        tokens[indexStateful],
-		// Status:     tokens[indexStatus],
-		// StatusCode: tokens[indexStatusCode],
-	}, nil
-}
-
 func IsInt64(value string) error {
 	if value == "" {
 		return nil

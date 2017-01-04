@@ -1,12 +1,11 @@
 package oci
 
 import (
-	"bufio"
 	"os"
 	"os/exec"
 
-	"github.com/lxc/lxd/shared"
 	"github.com/pkg/errors"
+	"encoding/json"
 )
 
 const (
@@ -16,6 +15,8 @@ const (
 	pidFile = "/tmp/pid"
 
 	defaultConsoleName = "/dev/console"
+
+	containerInfoTimeFormat = "2006-01-02T15:04:05.999999999Z"
 )
 
 var (
@@ -25,6 +26,31 @@ var (
 		"--debug",
 	}
 )
+
+type ContainerInfo struct {
+	Version string `json:"ociVersion"`
+	ID string `json:"id"`
+	PID int `json:"pid"`
+	BundlePath string `json:"bundlePath"`
+	CommsPath string `json:"commsPath"`
+	ProcessPath string `json:"processPath"`
+	Status string `json:"status"`
+	Created string `json:"created"`
+	Mounts []struct{
+		Destination string `json:"destination"`
+	} `json:"Mounts"`
+	Console struct{
+		Socket bool `json:"socket"`
+		Path string `json:"path"`
+	} `json:"console"`
+	VM struct {
+		HypervisorPath string `json:"hypervisor_path"`
+		ImagePath string `json:"image_path"`
+		KernelPath string `json:"kernel_path"`
+		WorkloadPath string `json:"workload_path"`
+		KernelParams string `json:"kernel_params"`
+	} `json:"vm"`
+}
 
 func ccOCICmd(args ...string) *exec.Cmd {
 	return exec.Command(
@@ -68,32 +94,17 @@ func Start() {
 
 }
 
-func List() ([]shared.ContainerInfo, error) {
-	cmd := ccOCICmd("list")
-	reader, err := cmd.StdoutPipe()
+func State(cname string) (ContainerInfo, error) {
+	cmd := ccOCICmd("list", cname)
+	data, err := cmd.Output()
 	if err != nil {
-		return nil, errors.Wrapf(err, "%v list execution problem", ccOCIBinaryPath)
+		return ContainerInfo{}, errors.Wrapf(err, "Error while getting state info for %v", cname)
 	}
-	if err := cmd.Start(); err != nil {
-		return nil, errors.Wrapf(err, "%v list execution problem", ccOCIBinaryPath)
+	result := &ContainerInfo{}
+
+	if err := json.Unmarshal(data, result); err != nil {
+		return ContainerInfo{}, errors.Wrapf(err, "Error while getting state info for %v", cname)
 	}
-	scanner := bufio.NewScanner(reader)
-	var results []shared.ContainerInfo
-	isFirstLine := true
-	for scanner.Scan() {
-		if isFirstLine {
-			isFirstLine = false
-			continue
-		}
-		text := scanner.Text()
-		container, err := shared.ParseContainerInfo(text)
-		if err != nil {
-			return nil, errors.Wrapf(err, "Error while parsing container string: %v", text)
-		}
-		results = append(results, container)
-	}
-	if err := cmd.Wait(); err != nil {
-		return nil, errors.Wrapf(err, "%v list execution problem", ccOCIBinaryPath)
-	}
-	return results, nil
+
+	return *result, nil
 }

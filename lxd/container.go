@@ -719,5 +719,9 @@ func containerLoadByName(d *Daemon, name string) (container, error) {
 		return nil, err
 	}
 
+	if d.oci {
+		return containerOCILoad(d, name)
+	}
+
 	return containerLXCLoad(d, args)
 }

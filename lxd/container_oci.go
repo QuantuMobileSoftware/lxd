@@ -5,9 +5,46 @@ import (
 	"io"
 	"os"
 	"github.com/lxc/lxd/shared"
+	"github.com/lxc/lxd/lxd/oci"
+	"github.com/pkg/errors"
+	"gopkg.in/lxc/go-lxc.v2"
 )
 
-type OCIContainer struct {}
+type OCIContainer struct {
+	// Properties
+	architecture int
+	cType        containerType
+	creationDate time.Time
+	lastUsedDate time.Time
+	ephemeral    bool
+	id           string
+	name         string
+	stateful     bool
+
+	// Config
+	expandedConfig  map[string]string
+	expandedDevices shared.Devices
+	fromHook        bool
+	localConfig     map[string]string
+	localDevices    shared.Devices
+	profiles        []string
+
+	// Cache
+	c        *lxc.Container
+	daemon   *Daemon
+	idmapset *shared.IdmapSet
+	storage  storage
+}
+
+func containerOCILoad(d *Daemon, cname string) (container, error) {
+	state, err := oci.State(cname)
+	if err != nil {
+		return nil, errors.Wrapf(err, "Error while attempting to get container %v info", cname)
+	}
+	return OCIContainer{
+		name: state.ID,
+	}, nil
+}
 
 func (OCIContainer) Freeze() error {
 	panic("implement me")
@@ -29,7 +66,7 @@ func (OCIContainer) Unfreeze() error {
 	panic("implement me")
 }
 
-func (OCIContainer) Restore(sourceContainer interface{}) error {
+func (OCIContainer) Restore(sourceContainer container) error {
 	panic("implement me")
 }
 
@@ -37,7 +74,7 @@ func (OCIContainer) Migrate(cmd uint, stateDir string, function string, stop boo
 	panic("implement me")
 }
 
-func (OCIContainer) Snapshots() ([]interface{}, error) {
+func (OCIContainer) Snapshots() ([]container, error) {
 	panic("implement me")
 }
 
@@ -45,7 +82,7 @@ func (OCIContainer) Rename(newName string) error {
 	panic("implement me")
 }
 
-func (OCIContainer) Update(newConfig interface{}, userRequested bool) error {
+func (OCIContainer) Update(newConfig containerArgs, userRequested bool) error {
 	panic("implement me")
 }
 
@@ -213,7 +250,7 @@ func (OCIContainer) StorageStop() error {
 	panic("implement me")
 }
 
-func (OCIContainer) Storage() interface{} {
+func (OCIContainer) Storage() storage {
 	panic("implement me")
 }
 
