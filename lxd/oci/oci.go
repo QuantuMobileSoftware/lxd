@@ -9,7 +9,7 @@ import (
 )
 
 const (
-	ccOCIBinaryPath = "./oci/cc-oci-runtime"
+	ccOCIBinaryPath = "cc-oci-runtime"
 
 	logPath         = "/tmp/log.json"
 	pidFile = "/tmp/pid"
@@ -70,9 +70,20 @@ func Create(name, bundlePath string) error {
 	cmd.Stdout = os.Stdout
 	err := cmd.Run()
 	if err != nil {
-		return errors.Wrapf(err, "%v create execution problem", ccOCIBinaryPath)
+		return errors.Wrapf(err, "Can't create container %v with bundle %v", name, bundlePath)
 	}
 
+	return nil
+}
+
+func Start(name string) error {
+	cmd := ccOCICmd("start", name)
+	cmd.Stderr = os.Stdout
+	cmd.Stdout = os.Stdout
+	err := cmd.Run()
+	if err != nil {
+		return errors.Wrapf(err, "Can't start container %v", name)
+	}
 	return nil
 }
 
@@ -90,9 +101,7 @@ func Delete(name string) error {
 	return nil
 }
 
-func Start() {
 
-}
 
 func State(cname string) (ContainerInfo, error) {
 	cmd := ccOCICmd("list", cname)

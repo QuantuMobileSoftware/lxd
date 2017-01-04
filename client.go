@@ -1377,6 +1377,7 @@ func (c *Client) Init(name string, imgremote string, image string, profiles *[]s
 			}
 
 			imageinfo, err := tmpremote.GetImageInfo(target)
+			fmt.Printf("************%+v", imageinfo)
 			if err != nil {
 				return nil, err
 			}

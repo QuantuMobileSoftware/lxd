@@ -27,6 +27,8 @@ import (
 	"github.com/lxc/lxd/shared"
 
 	log "gopkg.in/inconshreveable/log15.v2"
+	"github.com/pkg/errors"
+	"github.com/lxc/lxd/lxd/oci"
 )
 
 // Operation locking
@@ -1815,7 +1817,35 @@ func (c *containerLXC) startCommon() (string, error) {
 	return configPath, nil
 }
 
+const (
+	ociDirName = "oci"
+)
+
 func (c *containerLXC) Start(stateful bool) error {
+	if c.daemon.oci {
+		imagesDirPath := shared.VarPath("images")
+		imageFootprint := c.expandedConfig["volatile.base_image"]
+
+		fullImageFilePath := filepath.Join(imagesDirPath, imageFootprint)
+		destImagePath := filepath.Join(imagesDirPath, ociDirName, imageFootprint)
+		if  err:= os.MkdirAll(destImagePath, 0700); err != nil {
+			return errors.Wrapf(err, "Can't create directory %v", destImagePath)
+		}
+		if err := unpackImage(c.daemon, fullImageFilePath, destImagePath); err != nil {
+			return errors.Wrapf(err, "Can't unpack archived image %v", fullImageFilePath)
+		}
+
+		containerName := c.Name()
+
+		if err := oci.Create(containerName, fullImageFilePath); err != nil {
+			return err
+		}
+
+		if err := oci.Start(containerName); err != nil {
+			return err
+		}
+	}
+
 	var ctxMap log.Ctx
 
 	// Setup a new operation
