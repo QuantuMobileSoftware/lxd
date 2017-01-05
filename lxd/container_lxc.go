@@ -29,6 +29,7 @@ import (
 	log "gopkg.in/inconshreveable/log15.v2"
 	"github.com/pkg/errors"
 	"github.com/lxc/lxd/lxd/oci"
+	"github.com/lxc/lxd/lxd/oci/bundle"
 )
 
 // Operation locking
@@ -1821,31 +1822,7 @@ const (
 	ociDirName = "oci"
 )
 
-func (c *containerLXC) Start(stateful bool) error {
-	if c.daemon.oci {
-		imagesDirPath := shared.VarPath("images")
-		imageFootprint := c.expandedConfig["volatile.base_image"]
-
-		fullImageFilePath := filepath.Join(imagesDirPath, imageFootprint)
-		destImagePath := filepath.Join(imagesDirPath, ociDirName, imageFootprint)
-		if  err:= os.MkdirAll(destImagePath, 0700); err != nil {
-			return errors.Wrapf(err, "Can't create directory %v", destImagePath)
-		}
-		if err := unpackImage(c.daemon, fullImageFilePath, destImagePath); err != nil {
-			return errors.Wrapf(err, "Can't unpack archived image %v", fullImageFilePath)
-		}
-
-		containerName := c.Name()
-
-		if err := oci.Create(containerName, fullImageFilePath); err != nil {
-			return err
-		}
-
-		if err := oci.Start(containerName); err != nil {
-			return err
-		}
-	}
-
+func (c *containerLXC) startLXC(stateful bool) error {
 	var ctxMap log.Ctx
 
 	// Setup a new operation
@@ -1969,6 +1946,34 @@ func (c *containerLXC) Start(stateful bool) error {
 	shared.LogInfo("Started container", ctxMap)
 
 	return nil
+}
+
+func (c *containerLXC) startOCI(stateful bool) error {
+	imagesDirPath := shared.VarPath("images")
+	imageFootprint := c.expandedConfig["volatile.base_image"]
+
+	fullImageFilePath := filepath.Join(imagesDirPath, imageFootprint)
+	destImagePath := filepath.Join(imagesDirPath, ociDirName, imageFootprint)
+	if  err:= os.MkdirAll(destImagePath, 0700); err != nil {
+		return errors.Wrapf(err, "Can't create directory %v", destImagePath)
+	}
+	if err := unpackImage(c.daemon, fullImageFilePath, destImagePath); err != nil {
+		return errors.Wrapf(err, "Can't unpack archived image %v", fullImageFilePath)
+	}
+	if err := bundle.GenerateBundleMetadata(destImagePath); err != nil {return err}
+
+	containerName := c.Name()
+
+	if err := oci.Create(containerName, fullImageFilePath); err != nil {return err}
+	if err := oci.Start(containerName); err != nil {return err}
+	return nil
+}
+
+func (c *containerLXC) Start(stateful bool) error {
+	if c.daemon.oci {
+		return c.startOCI(stateful)
+	}
+	return c.startLXC(stateful)
 }
 
 func (c *containerLXC) OnStart() error {
