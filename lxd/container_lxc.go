@@ -1965,7 +1965,7 @@ func (c *containerLXC) startOCI(stateful bool) error {
 	containerName := c.Name()
 
 	if err := oci.Create(containerName, fullImageFilePath); err != nil {return err}
-	if err := oci.Start(containerName); err != nil {return err}
+	if err := oci.Start(destImagePath); err != nil {return err}
 	return nil
 }
 
