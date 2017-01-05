@@ -21,10 +21,10 @@ func (b *BundleFile) Generate(c Config) error {
 	file, err := os.Create(filepath.Join(c.BundlePath, b.filename))
 	defer file.Close()
 	if err != nil {
-		return errors.Wrapf(err, "Can't create file config.json for bundle %v", b.filename)
+		return errors.Wrapf(err, "Can't create file %v for bundle %v", b.filename, c.BundlePath)
 	}
 	if err = b.template.Execute(file, c); err != nil {
-		return errors.Wrapf(err, "Can't generate config.json for bundle %v", c.BundlePath)
+		return errors.Wrapf(err, "Can't generate %v for bundle %v", b.filename, c.BundlePath)
 	}
 	return nil
 }
@@ -37,15 +37,15 @@ var (
 		},
 		BundleFile{
 			template: template.Must(template.New("hostname_template").Parse(hostnameTemplateString)),
-			filename: "hostname",
+			filename: "rootfs/etc/hostname",
 		},
 		BundleFile{
 			template: template.Must(template.New("hosts_template").Parse(hostsTemplateString)),
-			filename: "hosts",
+			filename: "rootfs/etc/hosts",
 		},
 		BundleFile{
 			template: template.Must(template.New("resolvconf_template").Parse(resolvconfTemplateString)),
-			filename: "resolv.conf",
+			filename: "rootfs/etc/resolv.conf",
 		},
 	}
 

@@ -1960,6 +1960,10 @@ func (c *containerLXC) startOCI(stateful bool) error {
 	if err := unpackImage(c.daemon, fullImageFilePath, destImagePath); err != nil {
 		return errors.Wrapf(err, "Can't unpack archived image %v", fullImageFilePath)
 	}
+	if err := os.Remove(filepath.Join(destImagePath, "rootfs", "etc", "resolv.conf")); err != nil {
+		return err
+	}
+
 	if err := bundle.GenerateBundleMetadata(destImagePath); err != nil {return err}
 
 	containerName := c.Name()
